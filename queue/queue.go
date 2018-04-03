@@ -323,6 +323,50 @@ func (q *Queue) Len() int64 {
 	return int64(len(q.items))
 }
 
+// GetItems returns items in this queue.
+func (q *Queue) GetItems() []interface{} {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
+	return q.items
+}
+
+// Search takes a function and returns a list of items that
+// match the checker.  This does not wait and remove items.
+func (q *Queue) Search(checker func(item interface{}) bool) []interface{} {
+	if checker == nil {
+		return nil
+	}
+
+	q.lock.Lock()
+
+	if q.disposed {
+		q.lock.Unlock()
+		return nil
+	}
+
+	result := q.items.getMatch(checker)
+	q.lock.Unlock()
+	return result
+}
+
+// GetItem returns one item without deleting in this queue.
+func (q *Queue) GetItem(pos int) (interface{}, bool) {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	if len(q.items) > pos {
+		return q.items[pos], true
+	}
+	return nil, false
+}
+
+// GetItems returns items in this queue.
+func (q *Queue) Clear(hint int64) {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	q.items = make([]interface{}, 0, hint)
+}
+
 // Disposed returns a bool indicating if this queue
 // has had disposed called on it.
 func (q *Queue) Disposed() bool {
