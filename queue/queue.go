@@ -145,6 +145,25 @@ func (items *items) getUntil(checker func(item interface{}) bool) []interface{} 
 	return returnItems
 }
 
+func (items *items) getMatch(checker func(item interface{}) bool) []interface{} {
+	length := len(*items)
+
+	if len(*items) == 0 {
+		// returning nil here actually wraps that nil in a list
+		// of interfaces... thanks go
+		return []interface{}{}
+	}
+
+	returnItems := make([]interface{}, 0, length)
+	for _, item := range *items {
+		if !checker(item) {
+			returnItems = append(returnItems, item)
+		}
+	}
+
+	return returnItems
+}
+
 type sema struct {
 	ready    chan bool
 	response *sync.WaitGroup
