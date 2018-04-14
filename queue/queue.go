@@ -164,6 +164,25 @@ func (items *items) getMatch(checker func(item interface{}) bool) []interface{} 
 	return returnItems
 }
 
+func (items *items) getMatch(checker func(item interface{}) bool) []interface{} {
+	length := len(*items)
+
+	if len(*items) == 0 {
+		// returning nil here actually wraps that nil in a list
+		// of interfaces... thanks go
+		return []interface{}{}
+	}
+
+	returnItems := make([]interface{}, 0, length)
+	for _, item := range *items {
+		if !checker(item) {
+			returnItems = append(returnItems, item)
+		}
+	}
+
+	return returnItems
+}
+
 type sema struct {
 	ready    chan bool
 	response *sync.WaitGroup
@@ -368,6 +387,51 @@ func (q *Queue) Search(checker func(item interface{}) bool) []interface{} {
 	q.lock.Unlock()
 	return result
 }
+
+// GetItem returns one item without deleting in this queue.
+func (q *Queue) GetItem(pos int) (interface{}, bool) {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	if len(q.items) > pos {
+		return q.items[pos], true
+	}
+	return nil, false
+}
+
+// GetItems returns items in this queue.
+func (q *Queue) Clear(hint int64) {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	q.items = make([]interface{}, 0, hint)
+}
+
+// GetItems returns items in this queue.
+func (q *Queue) GetItems() []interface{} {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
+	return q.items
+}
+
+// Search takes a function and returns a list of items that
+// match the checker.  This does not wait and remove items.
+func (q *Queue) Search(checker func(item interface{}) bool) ([]interface{}) {
+	if checker == nil {
+		return nil
+	}
+
+	q.lock.Lock()
+
+	if q.disposed {
+		q.lock.Unlock()
+		return nil
+	}
+
+	result := q.items.getMatch(checker)
+	q.lock.Unlock()
+	return result
+}
+
 
 // GetItem returns one item without deleting in this queue.
 func (q *Queue) GetItem(pos int) (interface{}, bool) {
